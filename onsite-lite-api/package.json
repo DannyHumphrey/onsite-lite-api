@@ -9,7 +9,8 @@
   "scripts": {
     "test": "node --test test/**/*.test.js",
     "start": "fastify start -l info app.js",
-    "dev": "fastify start -w -l info -P app.js"
+    "dev": "fastify start -w -l info -P app.js",
+    "init-db": "node scripts/init-db.js"
   },
   "keywords": [],
   "author": "",
@@ -21,7 +22,9 @@
     "@fastify/sensible": "^6.0.0",
     "fastify-cli": "^7.4.0",
     "@fastify/env": "^5.0.2",
-    "@fastify/jwt": "^9.1.0"
+    "@fastify/jwt": "^9.1.0",
+    "mssql": "^11.0.1"
   },
   "devDependencies": {}
 }
+
