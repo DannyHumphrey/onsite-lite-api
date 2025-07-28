@@ -7,6 +7,15 @@ const { build: buildApplication } = require('fastify-cli/helper')
 const path = require('node:path')
 const AppPath = path.join(__dirname, '..', 'app.js')
 
+// Default environment variables for tests
+process.env.NODE_ENV = process.env.NODE_ENV || 'dev'
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'testsecret'
+process.env.DB_HOST = process.env.DB_HOST || 'localhost'
+process.env.DB_USER = process.env.DB_USER || 'sa'
+process.env.DB_PASS = process.env.DB_PASS || 'password'
+process.env.DB_NAME = process.env.DB_NAME || 'test'
+process.env.SKIP_DB = 'true'
+
 // Fill in this config with all the configurations
 // needed for testing the application
 function config () {
