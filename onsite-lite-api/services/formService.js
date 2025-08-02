@@ -10,4 +10,8 @@ async function getLatestSchemasByRoles(roles, db) {
   }))
 }
 
-module.exports = { getLatestSchemasByRoles }
+async function createFormTypeAndSchema (name, schema, db) {
+  return formRepository.createFormTypeAndSchema(name, schema, db)
+}
+
+module.exports = { getLatestSchemasByRoles, createFormTypeAndSchema }

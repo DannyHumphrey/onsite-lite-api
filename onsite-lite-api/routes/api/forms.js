@@ -9,4 +9,11 @@ module.exports = async function (fastify, opts) {
     const schemas = await formService.getLatestSchemasByRoles(roles, fastify.db)
     return schemas
   })
+
+  fastify.post('/forms', { preValidation: [fastify.authenticate] }, async function (request, reply) {
+    const { name, schema } = request.body || {}
+    const result = await formService.createFormTypeAndSchema(name, schema, fastify.db)
+    reply.code(201)
+    return result
+  })
 }
