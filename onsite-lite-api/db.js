@@ -5,6 +5,23 @@ const sql = require('mssql')
 let pool
 
 async function init (config) {
+  const dbName = config.database
+
+  if (dbName) {
+    const adminConfig = { ...config, database: 'master' }
+    const adminPool = new sql.ConnectionPool(adminConfig)
+    await adminPool.connect()
+    const request = adminPool.request().input('dbName', sql.NVarChar, dbName)
+    await request.query(`
+      IF DB_ID(@dbName) IS NULL
+      BEGIN
+        DECLARE @sql NVARCHAR(MAX) = 'CREATE DATABASE [' + REPLACE(@dbName, ']', ']]') + ']'
+        EXEC (@sql)
+      END
+    `)
+    await adminPool.close()
+  }
+
   pool = new sql.ConnectionPool(config)
   await pool.connect()
   return pool
