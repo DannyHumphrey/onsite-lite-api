@@ -4,7 +4,8 @@ const { test } = require('node:test')
 const assert = require('node:assert')
 const { build } = require('../helper')
 
-const path = '/api/forms/structure'
+// Route path updated to match current implementation in routes/api/forms.js
+const path = '/api/FormTemplates'
 
 test('structure requires auth', async (t) => {
   const app = await build(t)
