@@ -6,9 +6,12 @@
   "directories": {
     "test": "test"
   },
+  "engines": {
+  "node": ">=18"
+  },
   "scripts": {
     "test": "node --test test/**/*.test.js",
-    "start": "fastify start -l info app.js",
+    "start": "node server.js",
     "dev": "fastify start -w -l info -P app.js",
     "init-db": "node scripts/init-db.js"
   },
