@@ -25,7 +25,10 @@ async function buildApp() {
 async function start() {
   try {
     const app = await buildApp()
-    await app.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' })
+    await app.listen({ 
+        port: process.env.PORT || 3000, 
+        host: '0.0.0.0' })
+        
     console.log(`Fastify running on http://localhost:${app.server.address().port}`)
   } catch (err) {
     console.error(err)
