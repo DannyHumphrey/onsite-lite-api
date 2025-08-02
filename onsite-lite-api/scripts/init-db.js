@@ -1,6 +1,7 @@
 'use strict'
 
-const { init, query, getPool } = require('../db')
+const { init, getPool } = require('../db')
+const { ensureTables } = require('../ensure-tables')
 
 async function run () {
 
@@ -15,26 +16,7 @@ async function run () {
   console.debug(config)
 
   await init(config)
-
-  await query(`
-    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='FormType' AND xtype='U')
-    CREATE TABLE FormType (
-      Id INT IDENTITY(1,1) PRIMARY KEY,
-      Name VARCHAR(255) NOT NULL,
-      SchemaDriven BIT NOT NULL DEFAULT(0)
-    )
-  `)
-
-  await query(`
-    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='FormSchema' AND xtype='U')
-    CREATE TABLE FormSchema (
-      Id INT IDENTITY(1,1) PRIMARY KEY,
-      SchemaJson NVARCHAR(MAX) NOT NULL,
-      Version INT NOT NULL,
-      FormTypeId INT NOT NULL FOREIGN KEY REFERENCES FormType(Id)
-    )
-  `)
-
+  await ensureTables()
   await getPool().close()
 }
 

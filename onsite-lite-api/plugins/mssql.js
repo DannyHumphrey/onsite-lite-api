@@ -2,6 +2,7 @@
 
 const fp = require('fastify-plugin')
 const db = require('../db')
+const { ensureTables } = require('../ensure-tables')
 
 module.exports = fp(async function (fastify, opts) {
   if (process.env.SKIP_DB === 'true') {
@@ -24,6 +25,7 @@ module.exports = fp(async function (fastify, opts) {
   }
 
   await db.init(config)
+  await ensureTables()
 
   fastify.decorate('db', {
     pool: db.getPool(),
