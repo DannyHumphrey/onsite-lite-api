@@ -1,6 +1,26 @@
 # onsite-lite-api
 
-This project provides a Fastify based API with support for MS SQL Server
-connections using the `mssql` package.
+This repository now hosts a sample ASP.NET Core Web API that connects to a
+SQL Server database using `Microsoft.Data.SqlClient`.
 
-Environment credentials for the database are loaded from `.env.<environment>` files in the project root. Create files for `dev`, `qa`, `uat`, `staging` and `live` with variables `DB_HOST`, `DB_USER`, `DB_PASS` and `DB_NAME`.
+## Running the API
+
+The .NET project lives in `dotnet-api`:
+
+```
+cd dotnet-api
+dotnet run
+```
+
+The connection string is built from the following environment variables:
+
+- `DB_HOST`
+- `DB_USER`
+- `DB_PASS`
+- `DB_NAME`
+
+## Endpoints
+
+- `GET /` – returns a simple health object.
+- `GET /form-schemas?roles=role1,role2` – latest schemas for the provided roles.
+- `POST /form-schemas/{name}` – creates a new form type and schema.
