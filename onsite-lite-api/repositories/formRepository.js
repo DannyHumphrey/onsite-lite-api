@@ -1,68 +1,101 @@
-const db = require('../db')
+const sql = require('mssql')
 
-async function getLatestSchemasByRoles(roles, database = db) {
-  if (!roles || roles.length === 0) {
-    return []
+// Helper: exec with params
+async function exec(db, text, params = {}) {
+  const req = db.request()
+  for (const [k, v] of Object.entries(params)) {
+    // Accept either raw value or { type, value }
+    if (v && typeof v === 'object' && v.hasOwnProperty('value') && v.type) {
+      req.input(k, v.type, v.value)
+    } else {
+      req.input(k, v)
+    }
   }
+  const res = await req.query(text)
+  return res.recordset
+}
 
-  const params = {}
-  const placeholders = roles.map((role, idx) => {
-    const key = `role${idx}`
-    params[key] = role
-    return `@${key}`
-  }).join(', ')
-
-  const sql = `
-    SELECT ft.Id AS formTypeId,
-           ft.Name AS name,
-           fs.SchemaJson AS schemaJson,
-           fs.Version AS version
-    FROM FormType ft
-    JOIN FormSchema fs ON fs.FormTypeId = ft.Id
-    WHERE ft.Name IN (${placeholders})
-      AND fs.Version = (
-        SELECT MAX(Version) FROM FormSchema WHERE FormTypeId = ft.Id
-      )
+// Latest FormDefinition per FormType for a tenant
+async function getLatestDefinitionsForTenant(tenantId, db) {
+  const q = `
+    WITH ranked AS (
+      SELECT
+        fd.FormDefinitionId,
+        fd.TenantId,
+        fd.FormType,
+        fd.FormVersion,
+        fd.Name,
+        fd.SchemaJson,
+        fd.UiJson,
+        fd.WorkflowJson,
+        ROW_NUMBER() OVER (PARTITION BY fd.FormType ORDER BY fd.FormVersion DESC, fd.FormDefinitionId DESC) AS rn
+      FROM dbo.FormDefinition fd
+      WHERE fd.TenantId = @TenantId
+    )
+    SELECT *
+    FROM ranked
+    WHERE rn = 1
+    ORDER BY FormType
   `
-
-  const result = await database.query(sql, params)
-  return result.recordset
+  return exec(db, q, { TenantId: tenantId })
 }
 
-async function createFormTypeAndSchema (name, schema, database = db) {
-  // check if form type exists
-  const typeResult = await database.query(
-    'SELECT Id FROM FormType WHERE Name = @name',
-    { name }
-  )
+// Get next version number for (tenant, formType)
+async function nextVersionFor(tenantId, formType, db) {
+  const q = `
+    SELECT ISNULL(MAX(FormVersion), 0) + 1 AS NextVersion
+    FROM dbo.FormDefinition
+    WHERE TenantId = @TenantId AND FormType = @FormType
+  `
+  const rows = await exec(db, q, { TenantId: tenantId, FormType: formType })
+  return rows[0]?.NextVersion ?? 1
+}
 
-  let formTypeId
-  let version
-
-  if (typeResult.recordset.length === 0) {
-    // insert new form type and start at version 1
-    const insertType = await database.query(
-      'INSERT INTO FormType (Name) OUTPUT INSERTED.Id VALUES (@name)',
-      { name }
-    )
-    formTypeId = insertType.recordset[0].Id
-    version = 1
-  } else {
-    formTypeId = typeResult.recordset[0].Id
-    const versionResult = await database.query(
-      'SELECT MAX(Version) AS maxVersion FROM FormSchema WHERE FormTypeId = @formTypeId',
-      { formTypeId }
-    )
-    const maxVersion = versionResult.recordset[0].maxVersion || 0
-    version = maxVersion + 1
+// Insert a new FormDefinition
+async function insertFormDefinition(input, db) {
+  const q = `
+    INSERT INTO dbo.FormDefinition
+      (TenantId, CreatedByUserId, FormType, FormVersion, Name, SchemaJson, UiJson, WorkflowJson)
+    OUTPUT
+      inserted.FormDefinitionId     AS formDefinitionId,
+      inserted.TenantId             AS tenantId,
+      inserted.FormType             AS formType,
+      inserted.FormVersion          AS formVersion,
+      inserted.Name                 AS name,
+      inserted.SchemaJson           AS schemaJson,
+      inserted.UiJson               AS uiJson,
+      inserted.WorkflowJson         AS workflowJson,
+      inserted.DateCreatedUtc       AS dateCreatedUtc
+    VALUES
+      (@TenantId, @CreatedByUserId, @FormType, @FormVersion, @Name, @SchemaJson, @UiJson, @WorkflowJson)
+  `
+  const rows = await exec(db, q, {
+    TenantId: input.tenantId,
+    CreatedByUserId: input.createdByUserId,
+    FormType: input.formType,
+    FormVersion: input.formVersion,
+    Name: input.name,
+    SchemaJson: input.schemaJson,
+    UiJson: input.uiJson,
+    WorkflowJson: input.workflowJson
+  })
+  // Parse JSON before returning (handy for your route)
+  const r = rows[0]
+  return {
+    formDefinitionId: r.formDefinitionId,
+    tenantId: r.tenantId,
+    formType: r.formType,
+    formVersion: r.formVersion,
+    name: r.name,
+    schema: JSON.parse(r.schemaJson),
+    ui: r.uiJson ? JSON.parse(r.uiJson) : null,
+    workflow: r.workflowJson ? JSON.parse(r.workflowJson) : null,
+    dateCreatedUtc: r.dateCreatedUtc
   }
-
-  await database.query(
-    'INSERT INTO FormSchema (FormTypeId, SchemaJson, Version) VALUES (@formTypeId, @schemaJson, @version)',
-    { formTypeId, schemaJson: JSON.stringify(schema), version }
-  )
-
-  return { formTypeId, version }
 }
 
-module.exports = { getLatestSchemasByRoles, createFormTypeAndSchema }
+module.exports = {
+  getLatestDefinitionsForTenant,
+  nextVersionFor,
+  insertFormDefinition
+}
