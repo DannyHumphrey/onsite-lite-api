@@ -3,6 +3,7 @@
 const path = require('node:path')
 const Fastify = require('fastify')
 const AutoLoad = require('@fastify/autoload')
+const cors = require('@fastify/cors')
 
 async function buildApp() {
   const app = Fastify({ logger: true })
@@ -18,6 +19,9 @@ async function buildApp() {
     dir: path.join(__dirname, 'routes'),
     options: {}
   })
+
+  app.register(cors)
+
 
   return app
 }
