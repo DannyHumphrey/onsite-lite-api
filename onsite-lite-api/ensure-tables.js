@@ -86,9 +86,6 @@ async function ensureTables() {
     IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FormInstance_Tenant_State' AND object_id = OBJECT_ID('dbo.FormInstance'))
     CREATE INDEX IX_FormInstance_Tenant_State ON dbo.FormInstance (TenantId, CurrentState);
 
-    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FormInstance_Tenant_Site' AND object_id = OBJECT_ID('dbo.FormInstance'))
-    CREATE INDEX IX_FormInstance_Tenant_Site ON dbo.FormInstance (TenantId, SiteId) WHERE SiteId IS NOT NULL;
-
     IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FormInstance_Tenant_Date' AND object_id = OBJECT_ID('dbo.FormInstance'))
     CREATE INDEX IX_FormInstance_Tenant_Date ON dbo.FormInstance (TenantId, UpdatedUtc DESC);
   `);

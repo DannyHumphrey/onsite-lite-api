@@ -1,6 +1,6 @@
 'use strict'
 
-const instanceService = require('../../services/instanceService')
+const instanceService = require('../../services/instancesService')
 const authHelpers = require('../../services/authHelpers')
 
 module.exports = async function (fastify) {
@@ -38,7 +38,7 @@ module.exports = async function (fastify) {
 
   // Read instance
   fastify.get('/form-instances/:id', { preValidation: [fastify.authenticate] }, async (req, reply) => {
-    const ctx = { tenantId: getTenantId(req.user), userId: getUserId(req.user), roles: getRoles(req.user) }
+    const ctx = { tenantId: authHelpers.getTenantId(req.user), userId: authHelpers.getUserId(req.user), roles: authHelpers.getRoles(req.user) }
     const result = await instanceService.getInstance(Number(req.params.id), ctx, fastify.db)
     reply.header('ETag', result.etag)
     return result

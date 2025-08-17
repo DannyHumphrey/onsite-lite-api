@@ -1,7 +1,7 @@
 const repo = require('../repositories/instanceRepository')
 const crypto = require('crypto')
-const jsonpatch = require('fast-json-patch') // npm i fast-json-patch
-const Ajv = require('ajv')                   // npm i ajv
+const jsonpatch = require('fast-json-patch')
+const Ajv = require('ajv')                   
 const ajv = new Ajv({ allErrors: true, strict: false })
 
 function etagFor(id, version) {
@@ -28,14 +28,32 @@ function roleCanEdit(workflow, sectionKey, roles, state) {
   return section.rolesCanEdit.some(r => rset.has(r))
 }
 
-async function createInstance(input, ctx, db) {
-  // Resolve form definition
-  const def = await repo.getDefinition(ctx.tenantId, input.formType, input.formVersion, db)
-  if (!def) throw new Error('Form definition not found')
+function buildSkeletonFromSchema(def) {
+  try {
+    const arr = JSON.parse(def.SchemaJson);
+    const obj = {};
+    if (Array.isArray(arr)) {
+      for (const s of arr) {
+        if (s && s.type === 'section' && typeof s.key === 'string' && s.key.length) {
+          // only create object if not array-type section
+          obj[s.key] = {};
+        }
+      }
+    }
+    return obj;
+  } catch { return {}; }
+}
 
-  const workflow = parseWorkflow(def.WorkflowJson)
-  const state = initialStateOf(workflow)
-  const data = input.initialData || {}
+async function createInstance(input, ctx, db) {
+  const def = await repo.getDefinition(ctx.tenantId, input.formType, input.formVersion, db);
+  if (!def) throw new Error('Form definition not found');
+
+  const workflow = parseWorkflow(def.WorkflowJson);
+  const state = initialStateOf(workflow);
+
+  const skeleton = buildSkeletonFromSchema(def);
+  // shallow merge: client-provided initialData wins
+  const data = Object.assign({}, skeleton, input.initialData || {});
 
   const created = await repo.createInstance({
     tenantId: ctx.tenantId,
@@ -43,10 +61,10 @@ async function createInstance(input, ctx, db) {
     reporterUserId: ctx.userId,
     currentState: state,
     dataJson: JSON.stringify(data)
-  }, db)
+  }, db);
 
-  created.etag = etagFor(created.formInstanceId, created.version)
-  return created
+  created.etag = etagFor(created.formInstanceId, created.version);
+  return created;
 }
 
 async function getInstance(id, ctx, db) {

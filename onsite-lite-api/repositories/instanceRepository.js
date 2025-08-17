@@ -87,7 +87,7 @@ async function appendEventAndUpdate(input, db) {
         SET DataJson=@NewDataJson, Version=Version+1, UpdatedUtc=SYSUTCDATETIME()
         WHERE TenantId=@TenantId AND FormInstanceId=@FormInstanceId;
 
-        SELECT FormInstanceId, CurrentState, Version, UpdatedUtc
+        SELECT FormInstanceId as formInstanceId, CurrentState as currentState, Version as version, UpdatedUtc as updatedUtc
         FROM dbo.FormInstance
         WHERE TenantId=@TenantId AND FormInstanceId=@FormInstanceId;
       `)
