@@ -33,16 +33,32 @@ async function getDefinitionById(id, db) {
 async function createInstance(input, db) {
   const rows = await exec(db, `
     INSERT INTO dbo.FormInstance
-      (TenantId, FormDefinitionId, ReporterUserId, CurrentState, DataJson)
-    OUTPUT inserted.FormInstanceId AS formInstanceId, inserted.Version AS version
-    VALUES (@TenantId, @FormDefinitionId, @ReporterUserId, @CurrentState, @DataJson)
+      (TenantId, FormDefinitionId, ReporterUserId, CurrentState, ClientGeneratedId, DataJson)
+    OUTPUT inserted.FormInstanceId AS formInstanceId,
+           inserted.Version AS version,
+           inserted.CurrentState AS currentState,
+           inserted.FormDefinitionId AS formDefinitionId
+    VALUES (@TenantId, @FormDefinitionId, @ReporterUserId, @CurrentState, @ClientGeneratedId, @DataJson)
   `, {
     TenantId: input.tenantId,
     FormDefinitionId: input.formDefinitionId,
     ReporterUserId: input.reporterUserId,
     CurrentState: input.currentState,
+    ClientGeneratedId: input.clientGeneratedId,
     DataJson: input.dataJson
   })
+  return rows[0]
+}
+
+async function findByClientGeneratedId(tenantId, clientGeneratedId, db) {
+  const rows = await exec(db, `
+    SELECT FormInstanceId AS formInstanceId,
+           FormDefinitionId AS formDefinitionId,
+           CurrentState AS currentState,
+           Version AS version
+    FROM dbo.FormInstance
+    WHERE TenantId=@TenantId AND ClientGeneratedId=@ClientGeneratedId
+  `, { TenantId: tenantId, ClientGeneratedId: clientGeneratedId })
   return rows[0]
 }
 
@@ -99,7 +115,10 @@ async function appendEventAndUpdate(input, db) {
     // Unique idempotency violation -> return current projection
     if (e && String(e.message).includes('UX_FormEvent_Idem')) {
       const now = await exec(db, `
-        SELECT FormInstanceId, CurrentState, Version, UpdatedUtc
+        SELECT FormInstanceId AS formInstanceId,
+               CurrentState AS currentState,
+               Version AS version,
+               UpdatedUtc AS updatedUtc
         FROM dbo.FormInstance WHERE TenantId=@TenantId AND FormInstanceId=@FormInstanceId
       `, { TenantId: input.tenantId, FormInstanceId: input.formInstanceId })
       return now[0]
@@ -246,6 +265,7 @@ async function completeTask(input, db) {
 module.exports = {
   getDefinition, getDefinitionById,
   createInstance, getInstance,
+  findByClientGeneratedId,
   findEventByIdem, appendEventAndUpdate,
   transitionAndSpawnTasks, findUndoneSections,
   listTasks, assignTask, completeTask
