@@ -88,6 +88,14 @@ async function ensureTables() {
 
     IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FormInstance_Tenant_Date' AND object_id = OBJECT_ID('dbo.FormInstance'))
     CREATE INDEX IX_FormInstance_Tenant_Date ON dbo.FormInstance (TenantId, UpdatedUtc DESC);
+
+    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = N'ClientGeneratedId' AND Object_ID = Object_ID(N'dbo.FormInstance'))
+    ALTER TABLE dbo.FormInstance ADD ClientGeneratedId UNIQUEIDENTIFIER NULL;
+
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_FormInstance_ClientId' AND object_id = OBJECT_ID('dbo.FormInstance'))
+    CREATE UNIQUE INDEX UX_FormInstance_ClientId
+      ON dbo.FormInstance (TenantId, ClientGeneratedId)
+      WHERE ClientGeneratedId IS NOT NULL;
   `);
 
   // ---------------- FormEvent (append-only audit) ----------------

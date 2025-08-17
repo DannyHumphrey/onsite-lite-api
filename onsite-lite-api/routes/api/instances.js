@@ -10,10 +10,11 @@ module.exports = async function (fastify) {
     schema: {
       body: {
         type: 'object',
-        required: ['formType'],
+        required: ['formType', 'clientGeneratedId'],
         properties: {
           formType: { type: 'string', minLength: 1, maxLength: 64 },
           formVersion: { type: 'integer', minimum: 1 },
+          clientGeneratedId: { type: 'string', format: 'uuid' },
           initialData: { type: ['object', 'array', 'null'] }
         }
       }
@@ -24,10 +25,18 @@ module.exports = async function (fastify) {
       userId: authHelpers.getUserId(req.user),
       roles: authHelpers.getRoles(req.user)
     }
+    const idempotencyKey = req.headers['idempotency-key'] ? String(req.headers['idempotency-key']) : null
+    const existing = await instanceService.findByClientGeneratedId(req.body.clientGeneratedId, ctx, fastify.db)
+    if (existing) {
+      reply.header('ETag', existing.etag).code(200)
+      return existing
+    }
     const created = await instanceService.createInstance({
       formType: req.body.formType,
       formVersion: req.body.formVersion,
-      initialData: req.body.initialData ?? {}
+      clientGeneratedId: req.body.clientGeneratedId,
+      initialData: req.body.initialData ?? {},
+      idempotencyKey
     }, ctx, fastify.db)
 
     reply
