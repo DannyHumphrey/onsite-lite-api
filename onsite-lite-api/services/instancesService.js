@@ -44,6 +44,19 @@ function buildSkeletonFromSchema(def) {
   } catch { return {}; }
 }
 
+async function findByClientGeneratedId(clientGeneratedId, ctx, db) {
+  if (!clientGeneratedId) return null
+  const row = await repo.findByClientGeneratedId(ctx.tenantId, clientGeneratedId, db)
+  if (!row) return null
+  return {
+    formInstanceId: row.formInstanceId,
+    formDefinitionId: row.formDefinitionId,
+    currentState: row.currentState,
+    version: row.version,
+    etag: etagFor(row.formInstanceId, row.version)
+  }
+}
+
 async function createInstance(input, ctx, db) {
   const def = await repo.getDefinition(ctx.tenantId, input.formType, input.formVersion, db);
   if (!def) throw new Error('Form definition not found');
@@ -60,6 +73,7 @@ async function createInstance(input, ctx, db) {
     formDefinitionId: def.FormDefinitionId,
     reporterUserId: ctx.userId,
     currentState: state,
+    clientGeneratedId: input.clientGeneratedId,
     dataJson: JSON.stringify(data)
   }, db);
 
@@ -265,5 +279,6 @@ module.exports = {
   transition,
   listTasks,
   assignTask,
-  completeTask
+  completeTask,
+  findByClientGeneratedId
 }
